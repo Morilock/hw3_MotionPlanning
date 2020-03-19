@@ -1,4 +1,6 @@
-import java.util.*; 
+import java.util.PriorityQueue;
+import java.util.Comparator;
+import java.util.Collections;
 
 Character Character;
 boolean move = false;
@@ -11,20 +13,21 @@ int grid_size = 30;
 PVector start;
 PVector goal;
 
-Milestone GOAL;
-Milestone START;
+Milestones GOAL;
+Milestones START;
 
 PVector obstacle_center;
 int sample_number = 80;
 int obstacle_radius = 2 * grid_size;
 int character_radius = 15;
-Milestone[] sample_points;
+Milestones[] sample_points;
 int[][] paths_status = new int[sample_number+2][sample_number+2];
-PriorityQueue<Milestone> fringe = new PriorityQueue<Milestone>(new Compare());
-ArrayList<Milestone> path = new ArrayList<Milestone>();
+ArrayList<Milestones> fringeBFS = new ArrayList<Milestones>();
+PriorityQueue<Milestones> fringeA = new PriorityQueue<Milestones>(new Compare());
+ArrayList<Milestones> path = new ArrayList<Milestones>();
 
 float vel = 3;
-int idx = 0;
+int index = 0;
 
 class Character{
   PVector pos;
@@ -38,11 +41,11 @@ class Character{
   
   void update(){
     pos.add(vel);
-    if(check_Distance(path.get(idx).pos,pos) < 3){
-      if(path.get(idx).isGoal) Character.Set_Velocity(new PVector(0,0,0)) ;
+    if(check_Distance(path.get(index).pos,pos) < 3){
+      if(path.get(index).isGoal) Character.Set_Velocity(new PVector(0,0,0)) ;
       else{
-        Character.Set_Velocity(PVector.sub(path.get(idx+1).pos,path.get(idx).pos).normalize());
-        idx ++;
+        Character.Set_Velocity(PVector.sub(path.get(index+1).pos,path.get(index).pos).normalize());
+        index ++;
       }
     }
   }
@@ -52,17 +55,17 @@ class Character{
   }
 }
 
-class Milestone{  
+class Milestones{  
   boolean isGoal = false;
   boolean isVisited = false;
   float g;
   float h;
   float f;
   PVector pos;  
-  ArrayList<Milestone> neighbors = new ArrayList<Milestone>();
-  Milestone parent;
+  ArrayList<Milestones> neighbors = new ArrayList<Milestones>();
+  Milestones parent;
   
-  Milestone(PVector position){
+  Milestones(PVector position){
     pos = position;
     g =  PVector.sub(pos,start).mag();
     h = PVector.sub(pos,goal).mag();  
@@ -70,13 +73,15 @@ class Milestone{
   }
 }
 
-class Compare implements Comparator<Milestone>{
-    public int compare(Milestone m1, Milestone m2) {
+
+class Compare implements Comparator<Milestones>{
+    public int compare(Milestones m1, Milestones m2) {
         float f1 = m1.f;
         float f2 = m2.f;
         return Float.compare(f1,f2);
     }  
 }
+
 
 float check_Distance(PVector vector_1, PVector vector_2) {
   float x_distance = (vector_1.x - vector_2.x) * (vector_1.x - vector_2.x);
@@ -116,23 +121,44 @@ boolean check_Path(PVector point_1, PVector point_2) {
 }
 
 
-boolean A_Star(){  
+boolean BFS(){    
   START.isVisited = true;
-  fringe.add(START);
-  int iter = 0; 
-  while (fringe.size() >0){
-    iter++;    
-    Milestone curr = fringe.poll();
-    if(curr.isGoal) {
+  fringeBFS.add(START);
+  while (fringeBFS.size() > 0){
+    Milestones cur = fringeBFS.get(0);
+    fringeBFS.remove(0);
+    if(cur.isGoal) {
       return true;
     }
-    int num_neighbors = curr.neighbors.size();
-    for(int i = 0; i < num_neighbors; i++){
-      Milestone child = curr.neighbors.get(i);
-      if(!child.isVisited){
-        child.parent = curr;
+    int num_neighbors = cur.neighbors.size();
+    for (int i = 0; i < num_neighbors; i++){
+       Milestones child = cur.neighbors.get(i);
+      if (!child.isVisited){
         child.isVisited = true;
-        fringe.add(child);
+        child.parent = cur;
+        fringeBFS.add(child);
+      }
+    } 
+  }
+  return true;
+}
+
+
+boolean A_Star(){  
+  START.isVisited = true;
+  fringeA.add(START);
+  while (fringeA.size() >0){   
+    Milestones cur = fringeA.poll();
+    if(cur.isGoal) {
+      return true;
+    }
+    int num_neighbors = cur.neighbors.size();
+    for(int i = 0; i < num_neighbors; i++){
+      Milestones child = cur.neighbors.get(i);
+      if(!child.isVisited){
+        child.parent = cur;
+        child.isVisited = true;
+        fringeA.add(child);
       }
     }
   }  
@@ -146,10 +172,10 @@ void setup() {
   start = new PVector(character_x, character_y);
   goal = new PVector(600,100);
   obstacle_center = new PVector(width/2, height/2);  
-  sample_points = new Milestone[sample_number+2];
+  sample_points = new Milestones[sample_number+2];
   
-  GOAL = new  Milestone(goal);
-  START = new  Milestone(start);
+  GOAL = new  Milestones(goal);
+  START = new  Milestones(start);
   GOAL.isGoal = true;
   
   sample_points[0] = START;
@@ -167,7 +193,7 @@ void setup() {
     while (check_Feasibility(sample_point) == false) {
       sample_point = new PVector(random(55,595), random(55,595));
     }    
-    sample_points[i] = new  Milestone(sample_point);     
+    sample_points[i] = new  Milestones(sample_point);     
   }
   
   for (int i = 0; i < sample_number + 2; i++) {
@@ -181,17 +207,19 @@ void setup() {
     }
   }    
   
-  A_Star();  
-  Milestone curr = GOAL;
-  while(curr.parent!=null){
-     path.add(curr);
-     curr = curr.parent;
+  //BFS();
+  A_Star();
+  
+  Milestones cur = GOAL;
+  while(cur.parent!=null){
+     path.add(cur);
+     cur = cur.parent;
   }
-  path.add(curr);
+  path.add(cur);
   Collections.reverse(path); 
   Character = new Character(start);
-  Character.Set_Velocity(PVector.sub(path.get(idx+1).pos,path.get(idx).pos).normalize());
-  idx++;
+  Character.Set_Velocity(PVector.sub(path.get(index+1).pos,path.get(index).pos).normalize());
+  index++;
 }
 
 void draw() {
@@ -216,13 +244,13 @@ void draw() {
 void find_road(){
   fill(200,200,0);
   stroke(100,100,100); 
-  Milestone curr = GOAL;
-  Milestone prev = GOAL; 
-  while(curr.parent!=null){
-     circle(curr.pos.x, curr.pos.y, 15);
-     prev = curr;
-     curr = curr.parent;
-     line(prev.pos.x, prev.pos.y, curr.pos.x,curr.pos.y);
+  Milestones cur = GOAL;
+  Milestones pre = GOAL; 
+  while(cur.parent!=null){
+     circle(cur.pos.x, cur.pos.y, 15);
+     pre = cur;
+     cur = cur.parent;
+     line(pre.pos.x, pre.pos.y, cur.pos.x,cur.pos.y);
   }
   fill(0,0,255);
   if(move){
