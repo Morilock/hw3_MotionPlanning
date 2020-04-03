@@ -9,7 +9,7 @@ class Agent{
   PVector vc = new PVector(0,0);
   
   float inter_Radius = 80;
-  float expectedDuration = 0;
+  float next_vel = 0;
   boolean reachGoal = false; 
   float dt = 0.5;
   float r;
@@ -114,7 +114,7 @@ class Agent{
   }
   
   void next_node_vel(PVector dir){
-    expectedDuration = dir.mag()*5/dt/dt*1.5;
+    next_vel = dir.mag()*10/dt/dt;
     //startTime = 0;
   }
     

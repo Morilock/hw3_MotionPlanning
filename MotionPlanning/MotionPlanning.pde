@@ -25,61 +25,57 @@ boolean check_Feasibility(PVector sample_point) {
   }
   return true;
 }
-
-boolean check_Path(PVector p1, PVector p2){  
-  float a,b,c;
-  float i,sol1, sol2;
-  PVector dp,center;  
-  float r;
-  
-  for (int n = 0; n < obstacles.size(); n++){
-    center = obstacles.get(n).center;
-    r = obstacle_radius + sample_radius;
-        
-    dp = PVector.sub(p2,p1);
-    a = dp.x*dp.x + dp.y * dp.y;
-    b = 2*(dp.x*(p1.x - center.x) +dp.y*(p1.y - center.y));
-    c = PVector.dot(center,center);
-    c += PVector.dot(p1,p1);
-    c -= 2* PVector.dot(center,p1);
-    c -= r*r;
-    i = b*b - 4*a*c;
-    if(i>=0)  
-    sol1 =0;
-    sol2 = 0;
-      
-    if(i == 0){
-      sol1 = -b/2/a;
-      if(sol1> 0 && sol1 <1) 
-        return false;   
-    } 
-    
-    else{
-      sol1 = (-b + sqrt(i))/2/a;
-      sol2 = (-b - sqrt(i))/2/a;
-      if((sol1 >0 && sol1<1) || (sol2>0&&sol2<1)) 
-        return false;    
-    }
-  }
-    return true;
-}
 /*
 boolean check_Path(PVector p1, PVector p2){  
   float k,b, dist;
   PVector dp, center;  
+  PVector np1 = new PVector(p1.x, -p1.y);
+  PVector np2 = new PVector(p2.x, -p2.y);   
   
   for (int n = 0; n < obstacles.size(); n++){
     center = obstacles.get(n).center;
-    dp = PVector.sub(p2,p1);
+    PVector nc = new PVector(center.x, -center.y);
+    dp = PVector.sub(np2,np1);
     k = dp.y / dp.x;
-    b = p1.y - k*p1.x;
-    dist = ((-k)*center.x + center.y - b) / sqrt(k*k + b*b);
+    b = np1.y - k*np1.x;
+    dist = abs(k*nc.x - nc.y + b) / sqrt(k*k + 1);
     if (dist <= obstacle_radius + sample_radius)
       return false;    
   }
   return true;
 }
 */
+
+boolean check_Path(PVector p1, PVector p2){  
+  float a,b,c;
+  float delta,sol1, sol2;
+  PVector dp,center;  
+  float r;        
+  for (int n = 0; n < obstacles.size(); n++){
+    center = obstacles.get(n).center;
+    r = obstacle_radius + agent_radius;
+        
+    dp = PVector.sub(p2,p1);
+    a = dp.x*dp.x + dp.y * dp.y;
+    b = 2*(dp.x*(p1.x - center.x) +dp.y*(p1.y - center.y));
+    c = PVector.dot(center,center)+ PVector.dot(p1,p1) - 2* PVector.dot(center,p1) - r*r;
+    delta = b*b - 4*a*c;  
+    sol1 = 0;
+    sol2 = 0;    
+    if(delta == 0){
+      sol1 = -b/2/a;
+      if(sol1> 0 && sol1 <1) 
+        return false;
+    }  
+    else{
+      sol1 = (-b + sqrt(delta))/2/a;
+      sol2 = (-b - sqrt(delta))/2/a;
+      if((sol1 >0 && sol1<1) || (sol2>0 && sol2<1)) 
+        return false;
+    }
+  }
+  return true;
+}
 
 void setup() {  
   size(1000,1000);  
@@ -177,6 +173,7 @@ void draw() {
   circle(agents.get(0).this_Goal.pos.x, agents.get(0).this_Goal.pos.y,30); 
   fill(255,0,0);
   circle(agents.get(20).this_Goal.pos.x, agents.get(20).this_Goal.pos.y,30); 
+  //Search_again();
 }
 
 void check_newObstacle(){
@@ -221,7 +218,7 @@ void Agent_replan(){
 
 void Search_again(){
   for(int i = 0; i < agents.size(); i++){
-    if(!agents.get(i).reachGoal && agents.get(i).vel.mag() < 0.5){
+    if(!agents.get(i).reachGoal && agents.get(i).vel.mag() < 0.01){
       agents.get(i).searchPath(agents.get(i).pos,agents.get(i).this_Goal.pos);
     }
   }
@@ -281,8 +278,7 @@ void mousePressed(){
   if (mouseButton == RIGHT){
     agents.add(new Agent(new PVector(mouseX, mouseY),agent_radius));
     agents.get(agents.size()-1).searchPath(agents.get(agents.size()-1).pos,GOAL2);
-  }
-  
+  } 
   Search_again();  
   
 }
